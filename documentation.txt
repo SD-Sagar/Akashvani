@@ -1,0 +1,53 @@
+AKASHVANI TECHNICAL DOCUMENTATION
+=================================
+
+1. SYSTEM ARCHITECTURE
+----------------------
+Akashvani follows a Decoupled Monorepo Architecture.
+- /backend: Express API and Socket.io Server.
+- /frontend: React Single Page Application (Vite).
+- Production: Backend serves the /frontend/dist static folder.
+
+2. DATABASE SCHEMA (MongoDB)
+----------------------------
+A. User Model:
+   - username: String
+   - email: String (Unique)
+   - password: String (Hashed)
+   - uniqueId: String (AK-XXXXXXXX)
+   - avatarUrl: String (Cloudinary)
+   - friends: Array [Ref: User]
+
+B. Message Model:
+   - senderId: Ref User
+   - receiverId: Ref User
+   - content: String (Text or Cloudinary URL)
+   - timestamp: Date
+   - isRead: Boolean
+
+3. AUTHENTICATION FLOW
+----------------------
+- Stateless JWT authentication.
+- Tokens are stored in HTTP-Only cookies for maximum security against XSS.
+- Middleware: 'protect' verifies the JWT before allowing access to private routes.
+
+4. REAL-TIME ENGINE (Socket.io)
+-------------------------------
+- Connection: Authenticated via cookies during handshake.
+- Mapping: Server maintains a Map of UserId -> SocketId.
+- Events:
+  - private_message: Sends message data to the receiver's socket.
+  - typing: Notifies a specific receiver that the sender is typing.
+  - user_status: Broadcasts online/offline updates to friends.
+
+5. MEDIA HANDLING
+-----------------
+- Engine: Multer with Cloudinary Storage.
+- Limit: 20MB per file.
+- Logic: Files are uploaded to Cloudinary, and the returned secure_url is stored in the database.
+
+6. DESIGN SYSTEM
+----------------
+- CSS: Tailwind CSS with custom SAGAR-BLUE theme.
+- UI: Glassmorphism utility classes (.glass) with backdrop filters.
+- Icons: Lucide-React.

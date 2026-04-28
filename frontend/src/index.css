@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-sagar-blue: #007BFF;
+  --color-sagar-blue-hover: #0062cc;
+  --font-sans: "Inter", sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: #f1f5f9;
+    --foreground: #1e293b;
+    --pane-bg: rgba(255, 255, 255, 0.6);
+    --pane-border: rgba(0, 0, 0, 0.05);
+    --input-bg: #f8fafc;
+    --chat-bubble-receive: #e2e8f0;
+    --chat-bubble-send: var(--color-sagar-blue);
+    --chat-bubble-send-fg: #ffffff;
+    --chat-bubble-receive-fg: #1e293b;
+  }
+
+  .dark {
+    --background: #0f172a;
+    --foreground: #f8fafc;
+    --pane-bg: rgba(30, 41, 59, 0.7);
+    --pane-border: rgba(255, 255, 255, 0.1);
+    --input-bg: #1e293b;
+    --chat-bubble-receive: #1e293b;
+    --chat-bubble-receive-fg: #f8fafc;
+    /* Send bubble remains sagar-blue */
+  }
+
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] font-sans antialiased transition-colors duration-300;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-[var(--pane-bg)] backdrop-blur-xl border border-[var(--pane-border)] shadow-xl;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(71, 85, 105, 0.8);
+}

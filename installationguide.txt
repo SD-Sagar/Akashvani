@@ -1,0 +1,53 @@
+AKASHVANI INSTALLATION & DEPLOYMENT GUIDE
+========================================
+
+LOCAL INSTALLATION
+------------------
+1. Prerequisites:
+   - Node.js (v18+)
+   - MongoDB (Local or Atlas)
+   - Cloudinary Account
+
+2. Setup:
+   - In the root folder, run:
+     npm run install-all
+   
+3. Environment Configuration:
+   - Navigate to the /backend folder.
+   - Create a .env file with the following:
+     PORT=5000
+     MONGODB_URI=your_mongodb_connection_string
+     JWT_SECRET=your_super_secret_key
+     NODE_ENV=development
+     CLOUDINARY_CLOUD_NAME=your_name
+     CLOUDINARY_API_KEY=your_key
+     CLOUDINARY_API_SECRET=your_secret
+
+4. Running the App:
+   - From the root folder, run:
+     npm run dev
+   - Frontend will be at: http://localhost:5173
+   - Backend will be at: http://localhost:5000
+
+
+DEPLOYMENT (RENDER.COM)
+-----------------------
+1. Preparation:
+   - Upload your project to GitHub (ensure .gitignore is present).
+
+2. Create New Web Service:
+   - Connect your GitHub repository to Render.
+   - Name: akashvani
+
+3. Configuration:
+   - Environment: Node
+   - Build Command: npm run install-all && npm run build
+   - Start Command: npm start
+
+4. Environment Variables:
+   - Set all keys from your .env file.
+   - IMPORTANT: Set NODE_ENV to "production".
+
+5. Finalizing:
+   - Once deployed, your backend will automatically serve the frontend on your Render URL.
+   - Socket.io and API calls will automatically switch to production mode.
