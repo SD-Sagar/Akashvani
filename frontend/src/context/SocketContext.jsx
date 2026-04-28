@@ -13,8 +13,10 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      const newSocket = io(API_BASE_URL || window.location.origin, {
+      const socketUrl = API_BASE_URL || window.location.origin;
+      const newSocket = io(socketUrl, {
         withCredentials: true,
+        transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
       });
 
       setSocket(newSocket);
