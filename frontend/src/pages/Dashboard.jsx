@@ -1,24 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useTheme } from '../context/ThemeContext';
+import { useSocket } from '../context/SocketContext';
+import axios from 'axios';
+import API_BASE_URL from '../config';
 import Sidebar from '../components/Sidebar';
 import ChatArea from '../components/ChatArea';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
-import { Moon, Sun } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { Moon, Sun, LogOut } from 'lucide-react';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, logout, updateFriends } = useAuth();
   const [activeChatId, setActiveChatId] = useState(null);
   const { theme, toggleTheme } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { socket } = useSocket();
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [chatOrder, setChatOrder] = useState([]);
+
+  useEffect(() => {
+    if (user) {
+      setChatOrder(user.friends.map(f => f._id));
+    }
+  }, [user?._id]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('friend_added', (friendData) => {
+        updateFriends(friendData);
+        setChatOrder(prev => [friendData._id, ...prev]);
+      });
+
+      socket.on('receive_message', (message) => {
+        const senderId = message.senderId._id || message.senderId;
+        
+        // Move sender to top of chat order
+        setChatOrder(prev => {
+          const filtered = prev.filter(id => id !== senderId);
+          return [senderId, ...filtered];
+        });
+
+        if (activeChatId !== senderId) {
+          setUnreadCounts(prev => ({
+            ...prev,
+            [senderId]: (prev[senderId] || 0) + 1
+          }));
+        }
+      });
+
+      return () => {
+        socket.off('friend_added');
+        socket.off('receive_message');
+      };
+    }
+  }, [socket, activeChatId, updateFriends]);
 
   if (!user) {
     return <div className="h-screen flex items-center justify-center">Loading...</div>;
   }
 
+  useEffect(() => {
+    const fetchUnreadCounts = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/messages/unread`);
+        setUnreadCounts(res.data);
+      } catch (err) {
+        console.error("Fetch unread error", err);
+      }
+    };
+    if (user) {
+      const timer = setTimeout(fetchUnreadCounts, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [user?._id]);
+
   const handleSelectChat = (id) => {
     setActiveChatId(id);
-    setIsSidebarOpen(false); // Close sidebar on mobile when chat selected
+    setUnreadCounts(prev => ({ ...prev, [id]: 0 })); // Clear unread
+    setIsSidebarOpen(false);
   };
 
   return (
@@ -30,30 +89,36 @@ const Dashboard = () => {
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 md:hidden rounded-lg hover:bg-[var(--pane-bg)] transition-colors"
           >
-            <Logo className="w-8 h-8" />
+            <div className="relative">
+              <Logo className="w-8 h-8" />
+              {Object.values(unreadCounts).some(count => count > 0) && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[var(--pane-bg)]"></div>
+              )}
+            </div>
           </button>
           <div className="hidden md:block">
             <Logo className="w-10 h-10" />
           </div>
         </div>
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-2 md:gap-4">
           <button 
             onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-[var(--pane-bg)] transition-colors"
+            className="p-2.5 rounded-xl hover:bg-[var(--pane-bg)] transition-all duration-300 text-gray-500 hover:text-sagar-blue"
             title="Toggle Theme"
           >
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <div className="flex items-center gap-3">
-            <span className="font-medium opacity-80 hidden sm:block">{user.username}</span>
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt="avatar" className="w-8 h-8 rounded-full object-cover shadow-md" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-sagar-blue flex items-center justify-center text-white font-bold text-sm shadow-md">
-                {user.username.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
+
+          <div className="h-8 w-[1px] bg-[var(--pane-border)] mx-1 hidden md:block"></div>
+
+          <button 
+            onClick={logout}
+            className="hidden md:flex p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 items-center gap-2 font-bold text-sm px-4 group shadow-sm shadow-red-500/10"
+          >
+            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+            <span>Logout</span>
+          </button>
         </div>
       </header>
 
@@ -68,7 +133,12 @@ const Dashboard = () => {
           absolute md:relative z-10 w-full md:w-1/3 md:max-w-[400px] h-full flex flex-col transition-all duration-300
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
-          <Sidebar activeChatId={activeChatId} setActiveChatId={handleSelectChat} />
+          <Sidebar 
+            activeChatId={activeChatId} 
+            setActiveChatId={handleSelectChat} 
+            unreadCounts={unreadCounts}
+            chatOrder={chatOrder}
+          />
         </div>
 
         {/* Right Pane - Chat Area */}

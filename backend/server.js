@@ -71,92 +71,98 @@ io.use((socket, next) => {
 });
 
 io.on('connection', async (socket) => {
-  const userId = socket.userId.toString();
-  console.log(`User connected: ${userId} with socket ID: ${socket.id}`);
+  const userId = socket.userId.toString(); // Join a private room for this user
+  socket.join(`user_${userId}`);
   userSockets.set(userId, socket.id);
+  console.log(`User connected: ${userId} with socket ID: ${socket.id}`);
 
-  // Notify friends that this user is online
+  // Broadcast online status to friends
   try {
     const user = await User.findById(userId).populate('friends', '_id');
     if (user) {
+      const onlineFriendIds = [];
       user.friends.forEach(friend => {
-        const friendSocketId = userSockets.get(friend._id.toString());
-        if (friendSocketId) {
-          // Tell the friend I am online
-          io.to(friendSocketId).emit('user_status', { userId, status: 'online' });
-          // Tell me the friend is online
-          socket.emit('user_status', { userId: friend._id.toString(), status: 'online' });
+        const isOnline = userSockets.has(friend._id.toString());
+        if (isOnline) {
+          onlineFriendIds.push(friend._id.toString());
+          // Tell the friend I am online (send to all their tabs)
+          io.to(`user_${friend._id}`).emit('user_status', { userId, status: 'online' });
         }
       });
+      // Send the list of currently online friends to the user
+      socket.emit('initial_status', onlineFriendIds);
     }
   } catch (err) {
     console.error("Status broadcast error:", err);
   }
 
   socket.on('typing', ({ receiverId }) => {
-    const receiverSocketId = userSockets.get(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('typing_status', { userId, isTyping: true });
-    }
+    io.to(`user_${receiverId}`).emit('typing_status', { userId, isTyping: true });
   });
 
   socket.on('stop_typing', ({ receiverId }) => {
-    const receiverSocketId = userSockets.get(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('typing_status', { userId, isTyping: false });
-    }
+    io.to(`user_${receiverId}`).emit('typing_status', { userId, isTyping: false });
+  });
+
+  socket.on('friend_added', ({ receiverId, friendData }) => {
+    io.to(`user_${receiverId}`).emit('friend_added', friendData);
   });
 
   socket.on('private_message', async ({ receiverId, content }) => {
     try {
       const message = new Message({
-        senderId: socket.userId,
+        senderId: userId,
         receiverId,
         content,
       });
-      await message.save();
-
-      // Populate sender info if needed, but client might already have it.
-      const savedMessage = await message.populate('senderId', 'username avatarUrl uniqueId');
-
-      const receiverSocketId = userSockets.get(receiverId.toString());
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit('receive_message', savedMessage);
-      }
+      const savedMessage = await message.save();
+      const populatedMessage = await savedMessage.populate('senderId', 'username avatarUrl');
       
-      // Also send it back to sender to confirm
-      socket.emit('receive_message', savedMessage);
-    } catch (error) {
-      console.error('Socket message error:', error);
+      io.to(`user_${receiverId}`).emit('receive_message', populatedMessage);
+      io.to(`user_${userId}`).emit('receive_message', populatedMessage);
+    } catch (err) {
+      console.error('Message error:', err);
     }
   });
 
-  socket.on('mark_read', async ({ messageId }) => {
+  socket.on('mark_read', async ({ messageId, senderId }) => {
     try {
-      await Message.findByIdAndUpdate(messageId, { isRead: true });
-      // Emit to sender that message was read
+      await Message.updateOne({ _id: messageId }, { isRead: true });
+      io.to(`user_${senderId}`).emit('message_read', { messageId });
     } catch (error) {
       console.error('Mark read error:', error);
     }
   });
 
-  socket.on('disconnect', async () => {
-    console.log(`User disconnected: ${userId}`);
-    userSockets.delete(userId);
-
-    // Notify friends that this user is offline
+  socket.on('mark_all_read', async ({ senderId }) => {
     try {
-      const user = await User.findById(userId).populate('friends', '_id');
-      if (user) {
-        user.friends.forEach(friend => {
-          const friendSocketId = userSockets.get(friend._id.toString());
-          if (friendSocketId) {
-            io.to(friendSocketId).emit('user_status', { userId, status: 'offline' });
-          }
-        });
+      await Message.updateMany(
+        { senderId, receiverId: userId, isRead: false },
+        { $set: { isRead: true } }
+      );
+      io.to(`user_${senderId}`).emit('all_read', { receiverId: userId });
+    } catch (error) {
+      console.error('Mark all read error:', error);
+    }
+  });
+
+  socket.on('disconnect', async () => {
+    userSockets.delete(userId);
+    console.log(`User disconnected: ${userId}`);
+    
+    // Check if user has any other active sockets before saying they are offline
+    const remainingSockets = await io.in(`user_${userId}`).fetchSockets();
+    if (remainingSockets.length === 0) {
+      try {
+        const user = await User.findById(userId).populate('friends', '_id');
+        if (user) {
+          user.friends.forEach(friend => {
+            io.to(`user_${friend._id}`).emit('user_status', { userId, status: 'offline' });
+          });
+        }
+      } catch (err) {
+        console.error("Status broadcast error:", err);
       }
-    } catch (err) {
-      console.error("Status broadcast error:", err);
     }
   });
 });

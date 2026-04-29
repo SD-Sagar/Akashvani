@@ -5,32 +5,16 @@ import axios from 'axios';
 import API_BASE_URL from '../config';
 import { Search, UserPlus, LogOut, Copy, Check, Camera, UserMinus, X } from 'lucide-react';
 
-const Sidebar = ({ activeChatId, setActiveChatId }) => {
+const Sidebar = ({ activeChatId, setActiveChatId, unreadCounts, chatOrder }) => {
   const { user, updateFriends, logout, updateAvatarState, removeFriendState } = useAuth();
-  const { socket } = useSocket();
+  const { socket, onlineUsers } = useSocket();
   const [friendIdInput, setFriendIdInput] = useState('');
   const [addFriendError, setAddFriendError] = useState('');
   const [addFriendSuccess, setAddFriendSuccess] = useState('');
   const [copied, setCopied] = useState(false);
   const [addingFriend, setAddingFriend] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState(new Set());
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('user_status', ({ userId, status }) => {
-        setOnlineUsers(prev => {
-          const newSet = new Set(prev);
-          if (status === 'online') newSet.add(userId);
-          else newSet.delete(userId);
-          return newSet;
-        });
-      });
-
-      return () => socket.off('user_status');
-    }
-  }, [socket]);
 
   const handleAvatarUpdate = async (e) => {
     const file = e.target.files[0];
@@ -73,6 +57,15 @@ const Sidebar = ({ activeChatId, setActiveChatId }) => {
     try {
       const res = await axios.post(`${API_BASE_URL}/api/friends/add`, { uniqueId: friendIdInput });
       updateFriends(res.data.friend);
+      
+      // Notify the friend in real-time that they've been added
+      if (socket) {
+        socket.emit('friend_added', { 
+          receiverId: res.data.friend._id, 
+          friendData: res.data.currentUserData 
+        });
+      }
+
       setAddFriendSuccess(`Added ${res.data.friend.username}!`);
       setFriendIdInput('');
     } catch (err) {
@@ -124,7 +117,7 @@ const Sidebar = ({ activeChatId, setActiveChatId }) => {
               </button>
             </div>
           </div>
-          <button onClick={logout} className="p-2 text-red-400 hover:bg-red-400/10 rounded-full transition-colors" title="Logout">
+          <button onClick={logout} className="md:hidden p-2 text-red-400 hover:bg-red-400/10 rounded-full transition-colors" title="Logout">
             <LogOut size={20} />
           </button>
         </div>
@@ -158,7 +151,16 @@ const Sidebar = ({ activeChatId, setActiveChatId }) => {
             No friends yet. Add someone using their unique ID!
           </div>
         ) : (
-          user.friends.map((friend) => (
+          [...user.friends]
+            .sort((a, b) => {
+              const indexA = chatOrder.indexOf(a._id);
+              const indexB = chatOrder.indexOf(b._id);
+              if (indexA === -1 && indexB === -1) return 0;
+              if (indexA === -1) return 1;
+              if (indexB === -1) return -1;
+              return indexA - indexB;
+            })
+            .map((friend) => (
             <button
               key={friend._id}
               onClick={() => setActiveChatId(friend._id)}
@@ -180,6 +182,13 @@ const Sidebar = ({ activeChatId, setActiveChatId }) => {
                 <p className="font-semibold truncate text-sm">{friend.username}</p>
                 <p className="text-xs opacity-60 truncate">{friend.uniqueId}</p>
               </div>
+              
+              {unreadCounts?.[friend._id] > 0 && (
+                <div className="bg-sagar-blue text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shadow-sm">
+                  {unreadCounts[friend._id]}
+                </div>
+              )}
+
               <button 
                 onClick={(e) => {
                   e.stopPropagation();

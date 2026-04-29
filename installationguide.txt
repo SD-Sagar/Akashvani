@@ -35,19 +35,25 @@ DEPLOYMENT (RENDER.COM)
 1. Preparation:
    - Upload your project to GitHub (ensure .gitignore is present).
 
-2. Create New Web Service:
-   - Connect your GitHub repository to Render.
-   - Name: akashvani
-
-3. Configuration:
+2. Create a "Web Service" on Render:
+   - Connect your GitHub repository.
+   - Name: Akashvani
    - Environment: Node
-   - Build Command: npm run install-all && npm run build
-   - Start Command: npm start
+   - Build Command: npm run build
+   - Start Command: npm run start
 
-4. Environment Variables:
-   - Set all keys from your .env file.
+3. Environment Variables (on Render):
+   - Add all the variables from your local .env.
    - IMPORTANT: Set NODE_ENV to "production".
+   - IMPORTANT: MONGODB_URI must be an Atlas (cloud) URL.
 
-5. Finalizing:
-   - Once deployed, your backend will automatically serve the frontend on your Render URL.
-   - Socket.io and API calls will automatically switch to production mode.
+4. Finalize:
+   - Render will build the frontend and the backend will serve it automatically.
+   - Your app will be live at the provided .onrender.com URL.
+
+
+TECHNICAL NOTES
+---------------
+- Build Logic: The `npm run build` command in the root folder installs all dependencies and builds the Vite frontend into the `backend/frontend/dist` folder.
+- Real-time: The app uses Socket.io with WebSocket and Polling fallbacks to ensure stability on free hosting tiers like Render.
+- Persistence: Unread counts and read receipts are database-backed and persist across sessions.

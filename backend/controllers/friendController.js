@@ -32,11 +32,24 @@ export const addFriend = async (req, res) => {
     await friendToAdd.save();
 
     // Send back the friend details
-    res.status(200).json({
+    const friendDataForUser = {
       _id: friendToAdd._id,
       username: friendToAdd.username,
       uniqueId: friendToAdd.uniqueId,
       avatarUrl: friendToAdd.avatarUrl,
+    };
+
+    const userDataForFriend = {
+      _id: currentUser._id,
+      username: currentUser.username,
+      uniqueId: currentUser.uniqueId,
+      avatarUrl: currentUser.avatarUrl,
+    };
+
+    res.status(200).json({ 
+      message: 'Friend added successfully', 
+      friend: friendDataForUser,
+      currentUserData: userDataForFriend 
     });
   } catch (error) {
     console.error('Add friend error:', error);

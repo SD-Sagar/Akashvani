@@ -116,7 +116,7 @@ export const updateAvatar = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.userId,
       { avatarUrl: req.file.path },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('friends', 'username uniqueId avatarUrl');
 
     res.status(200).json(user);

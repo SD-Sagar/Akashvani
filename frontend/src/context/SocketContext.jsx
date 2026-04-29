@@ -9,6 +9,7 @@ export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
   const { user } = useAuth();
 
   useEffect(() => {
@@ -16,7 +17,20 @@ export const SocketProvider = ({ children }) => {
       const socketUrl = API_BASE_URL || window.location.origin;
       const newSocket = io(socketUrl, {
         withCredentials: true,
-        transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
+        transports: ['websocket', 'polling'],
+      });
+
+      newSocket.on('initial_status', (onlineIds) => {
+        setOnlineUsers(new Set(onlineIds));
+      });
+
+      newSocket.on('user_status', ({ userId, status }) => {
+        setOnlineUsers(prev => {
+          const newSet = new Set(prev);
+          if (status === 'online') newSet.add(userId);
+          else newSet.delete(userId);
+          return newSet;
+        });
       });
 
       setSocket(newSocket);
@@ -28,12 +42,13 @@ export const SocketProvider = ({ children }) => {
       if (socket) {
         socket.close();
         setSocket(null);
+        setOnlineUsers(new Set());
       }
     }
-  }, [user]);
+  }, [user?._id]);
 
   return (
-    <SocketContext.Provider value={{ socket }}>
+    <SocketContext.Provider value={{ socket, onlineUsers }}>
       {children}
     </SocketContext.Provider>
   );

@@ -4,9 +4,9 @@ AKASHVANI TECHNICAL DOCUMENTATION
 1. SYSTEM ARCHITECTURE
 ----------------------
 Akashvani follows a Decoupled Monorepo Architecture.
-- /backend: Express API and Socket.io Server.
+- /backend: Express 5 API and Socket.io Server.
 - /frontend: React Single Page Application (Vite).
-- Production: Backend serves the /frontend/dist static folder.
+- Production: Backend serves the /frontend/dist static folder via a universal catch-all route.
 
 2. DATABASE SCHEMA (MongoDB)
 ----------------------------
@@ -14,7 +14,7 @@ A. User Model:
    - username: String
    - email: String (Unique)
    - password: String (Hashed)
-   - uniqueId: String (AK-XXXXXXXX)
+   - uniqueId: String (AK-XX-XXXX)
    - avatarUrl: String (Cloudinary)
    - friends: Array [Ref: User]
 
@@ -34,20 +34,23 @@ B. Message Model:
 4. REAL-TIME ENGINE (Socket.io)
 -------------------------------
 - Connection: Authenticated via cookies during handshake.
-- Mapping: Server maintains a Map of UserId -> SocketId.
+- Private Rooms: Each user joins a room `user_${userId}`. This supports multiple active tabs/devices.
+- Persistence: Unread counts are fetched from the DB on mount; Read receipts are synchronized via `mark_read` and `mark_all_read` socket events.
+- Presence: `initial_status` event provides a list of online friends upon connection; `user_status` provides live updates.
 - Events:
-  - private_message: Sends message data to the receiver's socket.
+  - private_message: Sends message data to the receiver's private room.
   - typing: Notifies a specific receiver that the sender is typing.
-  - user_status: Broadcasts online/offline updates to friends.
+  - user_status: Broadcasts online/offline updates to friends' rooms.
 
 5. MEDIA HANDLING
 -----------------
 - Engine: Multer with Cloudinary Storage.
 - Limit: 20MB per file.
-- Logic: Files are uploaded to Cloudinary, and the returned secure_url is stored in the database.
+- Logic: Files are uploaded to Cloudinary first; the resulting URL is then shared via the Socket system to prevent double-saving.
 
 6. DESIGN SYSTEM
 ----------------
-- CSS: Tailwind CSS with custom SAGAR-BLUE theme.
+- CSS: Tailwind CSS with custom SAGAR-BLUE theme tokens.
 - UI: Glassmorphism utility classes (.glass) with backdrop filters.
 - Icons: Lucide-React.
+- Theme: Global Context-based Dark/Light mode switching.

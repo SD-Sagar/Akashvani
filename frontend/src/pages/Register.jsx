@@ -54,8 +54,8 @@ const Register = () => {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-[var(--background)] to-[var(--pane-bg)] py-10 px-4">
       <div className="glass p-8 md:p-10 rounded-3xl w-full max-w-md z-10 relative">
-        <div className="flex justify-center mb-8">
-          <Logo className="w-16 h-16" />
+        <div className="flex flex-col items-center mb-8">
+          <Logo className="w-16 h-16 flex-col" />
         </div>
         <h2 className="text-3xl font-bold mb-6 text-center tracking-tight">Create Account</h2>
         {error && <p className="text-red-500 mb-4 text-center text-sm bg-red-500/10 py-2 rounded-lg">{error}</p>}

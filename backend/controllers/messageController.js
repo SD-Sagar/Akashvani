@@ -1,4 +1,5 @@
 import Message from '../models/Message.js';
+import mongoose from 'mongoose';
 
 export const getMessages = async (req, res) => {
   try {
@@ -40,30 +41,45 @@ export const deleteChat = async (req, res) => {
 
 export const sendImage = async (req, res) => {
   try {
-    const { receiverId } = req.body;
-    const senderId = req.userId;
-
     if (!req.file) {
       return res.status(400).json({ message: 'No image uploaded' });
     }
-
-    const message = new Message({
-      senderId,
-      receiverId,
-      content: req.file.path, // Store the Cloudinary URL in content
-    });
-
-    await message.save();
-    
-    // We can also return the message so the client can emit it via socket if needed,
-    // but usually, the server handles the socket emit too.
-    // However, to keep it simple, we'll return the message and let the client handle UI update
-    // OR we can emit from here if we have access to the IO instance.
-    // Let's just return it for now.
-    
-    res.status(201).json(message);
+    res.status(200).json({ imageUrl: req.file.path });
   } catch (error) {
     console.error('Send image error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getUnreadCounts = async (req, res) => {
+  try {
+    const counts = await Message.aggregate([
+      { $match: { receiverId: new mongoose.Types.ObjectId(req.userId), isRead: false } },
+      { $group: { _id: '$senderId', count: { $sum: 1 } } }
+    ]);
+    
+    const unreadMap = {};
+    counts.forEach(item => {
+      unreadMap[item._id.toString()] = item.count;
+    });
+    
+    res.status(200).json(unreadMap);
+  } catch (error) {
+    console.error('Get unread counts error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const markAsRead = async (req, res) => {
+  try {
+    const { senderId } = req.params;
+    await Message.updateMany(
+      { senderId, receiverId: req.userId, isRead: false },
+      { $set: { isRead: true } }
+    );
+    res.status(200).json({ message: 'Messages marked as read' });
+  } catch (error) {
+    console.error('Mark as read error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

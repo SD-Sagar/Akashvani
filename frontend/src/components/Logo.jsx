@@ -1,8 +1,9 @@
 import React from 'react';
 
 const Logo = ({ className = 'w-12 h-12' }) => {
+  const isCol = className.includes('flex-col');
   return (
-    <div className={`flex items-center gap-3 group ${className}`}>
+    <div className={`flex items-center gap-3 group ${className} ${isCol ? 'items-center text-center' : ''}`}>
       <div className="relative w-10 h-10 md:w-12 md:h-12 flex-shrink-0">
         {/* Glow Effect */}
         <div className="absolute inset-0 bg-sagar-blue/30 rounded-full blur-xl group-hover:bg-sagar-blue/50 transition-all duration-500 animate-pulse"></div>

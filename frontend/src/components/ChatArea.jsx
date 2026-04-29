@@ -8,18 +8,19 @@ import EmojiPicker from 'emoji-picker-react';
 
 const ChatArea = ({ activeChatId, onBack }) => {
   const { user } = useAuth();
-  const { socket } = useSocket();
+  const { socket, onlineUsers } = useSocket();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isFriendTyping, setIsFriendTyping] = useState(false);
-  const [isOnline, setIsOnline] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  const isOnline = onlineUsers.has(activeChatId);
   
   const activeFriend = user?.friends.find(f => f._id === activeChatId);
 
@@ -29,6 +30,12 @@ const ChatArea = ({ activeChatId, onBack }) => {
         try {
           const res = await axios.get(`${API_BASE_URL}/api/messages/${activeChatId}`);
           setMessages(res.data);
+          
+          // Mark messages from this friend as read in the DB and notify them
+          await axios.put(`${API_BASE_URL}/api/messages/read/${activeChatId}`);
+          if (socket) {
+            socket.emit('mark_all_read', { senderId: activeChatId });
+          }
         } catch (error) {
           console.error("Error fetching messages:", error);
         }
@@ -53,19 +60,33 @@ const ChatArea = ({ activeChatId, onBack }) => {
     if (socket) {
       socket.on('receive_message', (message) => {
         // If message belongs to the current open chat
+        const msgSenderId = String(message.senderId._id || message.senderId);
+        const msgReceiverId = String(message.receiverId._id || message.receiverId);
+        const currentUserId = String(user._id);
+        const currentChatId = String(activeChatId);
+
         if (
-          (message.senderId === activeChatId && message.receiverId === user._id) ||
-          (message.senderId === user._id && message.receiverId === activeChatId) ||
-          // Handle populated senderId objects
-          (message.senderId._id === activeChatId && message.receiverId === user._id) ||
-          (message.senderId._id === user._id && message.receiverId === activeChatId)
+          (msgSenderId === currentChatId && msgReceiverId === currentUserId) ||
+          (msgSenderId === currentUserId && msgReceiverId === currentChatId)
         ) {
           setMessages((prev) => [...prev, message]);
-          setIsFriendTyping(false); // Stop typing indicator if message received
+          setIsFriendTyping(false); 
           
-          if (message.senderId !== user._id && message.senderId._id !== user._id) {
-             socket.emit('mark_read', { messageId: message._id });
+          if (msgSenderId !== currentUserId) {
+             socket.emit('mark_read', { messageId: message._id, senderId: msgSenderId });
           }
+        }
+      });
+
+      socket.on('message_read', ({ messageId }) => {
+        setMessages(prev => prev.map(msg => 
+          msg._id === messageId ? { ...msg, isRead: true } : msg
+        ));
+      });
+
+      socket.on('all_read', ({ receiverId }) => {
+        if (receiverId === activeChatId) {
+          setMessages(prev => prev.map(msg => ({ ...msg, isRead: true })));
         }
       });
 
@@ -75,16 +96,11 @@ const ChatArea = ({ activeChatId, onBack }) => {
         }
       });
 
-      socket.on('user_status', ({ userId, status }) => {
-        if (userId === activeChatId) {
-          setIsOnline(status === 'online');
-        }
-      });
-
       return () => {
         socket.off('receive_message');
+        socket.off('message_read');
+        socket.off('all_read');
         socket.off('typing_status');
-        socket.off('user_status');
       };
     }
   }, [socket, activeChatId, user._id]);
@@ -139,10 +155,10 @@ const ChatArea = ({ activeChatId, onBack }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // Emit the message via socket so the receiver gets it real-time
+      // Emit the message via socket. The socket listener on the server will now save it to the DB.
       socket.emit('private_message', {
         receiverId: activeChatId,
-        content: res.data.content, // This is the Cloudinary URL
+        content: res.data.imageUrl, // Use the imageUrl returned from the server
       });
 
     } catch (err) {
@@ -238,7 +254,9 @@ const ChatArea = ({ activeChatId, onBack }) => {
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
         {messages.map((msg, index) => {
-          const isSender = msg.senderId === user._id || msg.senderId._id === user._id;
+          const msgSenderId = String(msg.senderId._id || msg.senderId);
+          const currentUserId = String(user._id);
+          const isSender = msgSenderId === currentUserId;
           const isImage = msg.content.startsWith('http') && (msg.content.includes('cloudinary') || msg.content.match(/\.(jpeg|jpg|gif|png|webp)$/) != null);
           
           return (
