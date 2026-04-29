@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import Signature from '../components/Signature';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -59,6 +60,7 @@ const Login = () => {
         <p className="mt-6 text-center text-sm opacity-80">
           Don't have an account? <Link to="/register" className="text-sagar-blue font-semibold hover:underline">Register here</Link>
         </p>
+        <Signature className="mt-6" />
       </div>
       
       {/* Decorative background elements */}

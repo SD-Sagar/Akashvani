@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import Signature from '../components/Signature';
 import { Upload } from 'lucide-react';
 
 const Register = () => {
@@ -122,6 +123,7 @@ const Register = () => {
         <p className="mt-6 text-center text-sm opacity-80">
           Already have an account? <Link to="/login" className="text-sagar-blue font-semibold hover:underline">Login here</Link>
         </p>
+        <Signature className="mt-6" />
       </div>
 
       {/* Decorative background elements */}

@@ -4,6 +4,7 @@ import { useSocket } from '../context/SocketContext';
 import axios from 'axios';
 import API_BASE_URL from '../config';
 import { Search, UserPlus, LogOut, Copy, Check, Camera, UserMinus, X } from 'lucide-react';
+import Signature from './Signature';
 
 const Sidebar = ({ activeChatId, setActiveChatId, unreadCounts, chatOrder }) => {
   const { user, updateFriends, logout, updateAvatarState, removeFriendState } = useAuth();
@@ -203,6 +204,9 @@ const Sidebar = ({ activeChatId, setActiveChatId, unreadCounts, chatOrder }) => 
           ))
         )}
       </div>
+
+      {/* Trademark Footer */}
+      <Signature className="border-t border-[var(--pane-border)] bg-[var(--pane-bg)]/50" />
     </div>
   );
 };
