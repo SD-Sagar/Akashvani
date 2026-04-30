@@ -6,6 +6,49 @@ import API_BASE_URL from '../config';
 import { Search, UserPlus, LogOut, Copy, Check, Camera, UserMinus, X } from 'lucide-react';
 import Signature from './Signature';
 
+const FriendItem = React.memo(({ friend, isActive, isOnline, unreadCount, onSelect, onRemove }) => {
+  return (
+    <button
+      onClick={() => onSelect(friend._id)}
+      className={`w-full group flex items-center gap-3 p-3 rounded-xl transition-all ${isActive ? 'bg-sagar-blue/10 border border-sagar-blue/20' : 'hover:bg-[var(--pane-bg)] border border-transparent'}`}
+    >
+      <div className="relative shrink-0">
+        {friend.avatarUrl ? (
+          <img src={friend.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 font-bold text-sm">
+            {friend.username.charAt(0).toUpperCase()}
+          </div>
+        )}
+        {isOnline && (
+          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--pane-bg)] shadow-sm animate-pulse"></div>
+        )}
+      </div>
+      <div className="flex-1 text-left overflow-hidden">
+        <p className="font-semibold truncate text-sm">{friend.username}</p>
+        <p className="text-xs opacity-60 truncate">{friend.uniqueId}</p>
+      </div>
+      
+      {unreadCount > 0 && (
+        <div className="bg-sagar-blue text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shadow-sm">
+          {unreadCount}
+        </div>
+      )}
+
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(friend._id);
+        }}
+        className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+        title="Remove Friend"
+      >
+        <UserMinus size={16} />
+      </button>
+    </button>
+  );
+});
+
 const Sidebar = ({ activeChatId, setActiveChatId, unreadCounts, chatOrder }) => {
   const { user, updateFriends, logout, updateAvatarState, removeFriendState } = useAuth();
   const { socket, onlineUsers } = useSocket();
@@ -162,46 +205,16 @@ const Sidebar = ({ activeChatId, setActiveChatId, unreadCounts, chatOrder }) => 
               return indexA - indexB;
             })
             .map((friend) => (
-            <button
-              key={friend._id}
-              onClick={() => setActiveChatId(friend._id)}
-              className={`w-full group flex items-center gap-3 p-3 rounded-xl transition-all ${activeChatId === friend._id ? 'bg-sagar-blue/10 border border-sagar-blue/20' : 'hover:bg-[var(--pane-bg)] border border-transparent'}`}
-            >
-              <div className="relative shrink-0">
-                {friend.avatarUrl ? (
-                  <img src={friend.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 font-bold text-sm">
-                    {friend.username.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                {onlineUsers.has(friend._id) && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[var(--pane-bg)] shadow-sm animate-pulse"></div>
-                )}
-              </div>
-              <div className="flex-1 text-left overflow-hidden">
-                <p className="font-semibold truncate text-sm">{friend.username}</p>
-                <p className="text-xs opacity-60 truncate">{friend.uniqueId}</p>
-              </div>
-              
-              {unreadCounts?.[friend._id] > 0 && (
-                <div className="bg-sagar-blue text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shadow-sm">
-                  {unreadCounts[friend._id]}
-                </div>
-              )}
-
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveFriend(friend._id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                title="Remove Friend"
-              >
-                <UserMinus size={16} />
-              </button>
-            </button>
-          ))
+              <FriendItem
+                key={friend._id}
+                friend={friend}
+                isActive={activeChatId === friend._id}
+                isOnline={onlineUsers.has(friend._id)}
+                unreadCount={unreadCounts?.[friend._id]}
+                onSelect={setActiveChatId}
+                onRemove={handleRemoveFriend}
+              />
+            ))
         )}
       </div>
 

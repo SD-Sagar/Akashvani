@@ -54,3 +54,10 @@ B. Message Model:
 - UI: Glassmorphism utility classes (.glass) with backdrop filters.
 - Icons: Lucide-React.
 - Theme: Global Context-based Dark/Light mode switching.
+
+7. PERFORMANCE OPTIMIZATIONS
+---------------------------
+- Database: Compound indexing on (senderId, receiverId, timestamp) for O(1) message retrieval.
+- Network: Backend middleware (compression) for Gzip/Brotli payload reduction.
+- Rendering: Component memoization (React.memo) to prevent unnecessary DOM updates.
+- Graphics: GPU-accelerated CSS (will-change) for liquid-smooth transitions.

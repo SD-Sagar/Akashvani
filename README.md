@@ -5,6 +5,7 @@ Akashvani is an ultra-modern, professional private messaging application built w
 ## ✨ Features
 
 - **Real-time Chat**: Powered by Socket.io for instant message delivery with user-room isolation.
+- **High-Performance Engine**: Optimized with MongoDB indexing and Gzip compression for lightning-fast loads.
 - **Smart Activity Sorting**: Friends list dynamically sorts by the most recent conversation.
 - **Persistent Unread Memory**: Unread counts are saved to the DB and persist across logouts.
 - **Real-time Read Receipts**: Instant "Delivered" to "Read" status updates across devices.
@@ -13,7 +14,7 @@ Akashvani is an ultra-modern, professional private messaging application built w
 - **Secure Media Sharing**: Support for image uploads up to 20MB via Cloudinary.
 - **Profile Customization**: Dynamic avatar updates and professional profile management.
 - **Privacy Controls**: Friend removal and full chat history deletion.
-- **Responsive Design**: Optimized layouts with device-specific UI elements.
+- **Responsive Design**: Optimized layouts with hardware-accelerated animations.
 - **Premium Aesthetics**: Dark/Light mode support with animated SVG "Cosmic Signal" logo.
 
 ## 🚀 Tech Stack

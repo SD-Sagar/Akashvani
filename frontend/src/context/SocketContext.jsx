@@ -14,10 +14,13 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
+      setOnlineUsers(new Set()); // Reset on login
       const socketUrl = API_BASE_URL || window.location.origin;
       const newSocket = io(socketUrl, {
         withCredentials: true,
         transports: ['websocket', 'polling'],
+        forceNew: true,
+        reconnection: true,
       });
 
       newSocket.on('initial_status', (onlineIds) => {

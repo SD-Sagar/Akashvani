@@ -130,7 +130,7 @@ const Dashboard = () => {
 
         {/* Left Pane - Sidebar */}
         <div className={`
-          absolute md:relative z-10 w-full md:w-1/3 md:max-w-[400px] h-full flex flex-col transition-all duration-300
+          absolute md:relative z-10 w-full md:w-1/3 md:max-w-[400px] h-full flex flex-col sidebar-transition
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
           <Sidebar 

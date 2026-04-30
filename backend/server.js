@@ -14,6 +14,7 @@ import Message from './models/Message.js';
 import User from './models/User.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import compression from 'compression';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = express();
+app.use(compression());
 const server = http.createServer(app);
 
 app.use(cors({
