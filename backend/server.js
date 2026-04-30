@@ -110,20 +110,75 @@ io.on('connection', async (socket) => {
     io.to(`user_${receiverId}`).emit('friend_added', friendData);
   });
 
-  socket.on('private_message', async ({ receiverId, content }) => {
+  socket.on('private_message', async ({ receiverId, content, messageType = 'text', replyTo = null }) => {
     try {
       const message = new Message({
         senderId: userId,
         receiverId,
         content,
+        messageType,
+        replyTo
       });
       const savedMessage = await message.save();
-      const populatedMessage = await savedMessage.populate('senderId', 'username avatarUrl');
+      const populatedMessage = await Message.findById(savedMessage._id)
+        .populate('senderId', 'username avatarUrl')
+        .populate('replyTo', 'content messageType');
       
       io.to(`user_${receiverId}`).emit('receive_message', populatedMessage);
       io.to(`user_${userId}`).emit('receive_message', populatedMessage);
     } catch (err) {
       console.error('Message error:', err);
+    }
+  });
+
+  socket.on('delete_message', async ({ messageId, receiverId }) => {
+    try {
+      await Message.findByIdAndDelete(messageId);
+      io.to(`user_${receiverId}`).emit('message_deleted', { messageId });
+      io.to(`user_${userId}`).emit('message_deleted', { messageId });
+    } catch (err) {
+      console.error('Delete message error:', err);
+    }
+  });
+
+  socket.on('react_message', async ({ messageId, emoji, receiverId }) => {
+    try {
+      const message = await Message.findById(messageId);
+      if (message) {
+        const existingReactionIndex = message.reactions.findIndex(r => r.userId.toString() === userId);
+        
+        if (existingReactionIndex !== -1) {
+          if (message.reactions[existingReactionIndex].emoji === emoji) {
+            message.reactions.splice(existingReactionIndex, 1); // Toggle off
+          } else {
+            message.reactions[existingReactionIndex].emoji = emoji; // Update
+          }
+        } else {
+          message.reactions.push({ userId, emoji }); // Add new
+        }
+        
+        await message.save();
+        io.to(`user_${receiverId}`).emit('reaction_updated', { messageId, reactions: message.reactions });
+        io.to(`user_${userId}`).emit('reaction_updated', { messageId, reactions: message.reactions });
+      }
+    } catch (err) {
+      console.error('Reaction error:', err);
+    }
+  });
+
+  socket.on('clear_history', ({ receiverId }) => {
+    io.to(`user_${receiverId}`).emit('history_cleared', { senderId: userId });
+  });
+
+  socket.on('mark_all_read', async ({ senderId }) => {
+    try {
+      await Message.updateMany(
+        { senderId, receiverId: userId, isRead: false },
+        { $set: { isRead: true } }
+      );
+      io.to(`user_${senderId}`).emit('all_read', { receiverId: userId });
+    } catch (err) {
+      console.error('Mark all read error:', err);
     }
   });
 

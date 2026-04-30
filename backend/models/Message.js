@@ -15,6 +15,20 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  messageType: {
+    type: String,
+    enum: ['text', 'image', 'audio'],
+    default: 'text',
+  },
+  replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+    default: null,
+  },
+  reactions: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    emoji: String
+  }],
   timestamp: {
     type: Date,
     default: Date.now,

@@ -11,7 +11,9 @@ export const getMessages = async (req, res) => {
         { senderId: currentUserId, receiverId: userId },
         { senderId: userId, receiverId: currentUserId },
       ],
-    }).sort({ timestamp: 1 });
+    })
+    .populate('replyTo', 'content messageType')
+    .sort({ timestamp: 1 });
 
     res.status(200).json(messages);
   } catch (error) {

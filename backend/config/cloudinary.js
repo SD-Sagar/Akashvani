@@ -14,8 +14,9 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'akashvani_avatars',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    folder: 'akashvani_media',
+    resource_type: 'auto', // Support image, audio, video
+    allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'webm', 'mp3', 'wav', 'ogg'],
   },
 });
 
