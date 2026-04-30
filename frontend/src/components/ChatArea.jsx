@@ -21,6 +21,7 @@ const ChatArea = ({ activeChatId, onBack }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
+  const [activeMenuId, setActiveMenuId] = useState(null);
   
   const mediaRecorderRef = useRef(null);
   const recordingTimerRef = useRef(null);
@@ -36,14 +37,12 @@ const ChatArea = ({ activeChatId, onBack }) => {
       const friend = user.friends.find(f => f._id === activeChatId);
       setActiveFriend(friend);
       fetchMessages();
-      // Mark all as read when opening chat
-      if (socket) {
-        socket.emit('mark_all_read', { senderId: activeChatId });
-      }
+      if (socket) socket.emit('mark_all_read', { senderId: activeChatId });
     }
     setReplyTo(null);
     setAudioBlob(null);
     setShowMenu(false);
+    setActiveMenuId(null);
   }, [activeChatId, socket]);
 
   useEffect(() => {
@@ -59,7 +58,6 @@ const ChatArea = ({ activeChatId, onBack }) => {
         ) {
           setMessages(prev => [...prev, message]);
           if (message.senderId?._id === activeChatId) {
-            // Mark new incoming message as read instantly
             socket.emit('mark_read', { messageId: message._id, senderId: activeChatId });
           }
         }
@@ -143,12 +141,14 @@ const ChatArea = ({ activeChatId, onBack }) => {
 
   const handleIndividualDelete = (messageId) => {
     if (socket) socket.emit('delete_message', { messageId, receiverId: activeChatId });
+    setActiveMenuId(null);
   };
 
   const handleReact = (messageId, emoji) => {
     if (socket) {
       socket.emit('react_message', { messageId, emoji, receiverId: activeChatId });
       setReactionPickerFor(null);
+      setActiveMenuId(null);
     }
   };
 
@@ -306,10 +306,11 @@ const ChatArea = ({ activeChatId, onBack }) => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar scroll-smooth">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar scroll-smooth" onClick={() => setActiveMenuId(null)}>
         {messages.map((msg, index) => {
           const isMe = String(msg.senderId?._id || msg.senderId) === String(user._id);
           const showAvatar = index === 0 || String(messages[index-1].senderId?._id || messages[index-1].senderId) !== String(msg.senderId?._id || msg.senderId);
+          const isMenuOpen = activeMenuId === msg._id;
 
           return (
             <div key={msg._id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group/bubble relative message-appear`}>
@@ -329,16 +330,12 @@ const ChatArea = ({ activeChatId, onBack }) => {
                   )}
                   {!isMe && !showAvatar && <div className="w-6" />}
                   
-                  <div className="relative">
-                    <div className={`p-3 px-4 rounded-2xl shadow-sm transition-all duration-300 ${isMe ? 'bg-sagar-blue text-white rounded-tr-none' : 'glass rounded-tl-none border border-[var(--pane-border)]'}`}>
+                  <div className="relative cursor-pointer" onClick={(e) => { e.stopPropagation(); setActiveMenuId(isMenuOpen ? null : msg._id); }}>
+                    <div className={`p-3 px-4 rounded-2xl shadow-sm transition-all duration-300 ${isMe ? 'bg-sagar-blue text-white rounded-tr-none' : 'glass rounded-tl-none border border-[var(--pane-border)]'} ${isMenuOpen ? 'ring-2 ring-sagar-blue/50 scale-[0.98]' : ''}`}>
                       {renderMessageContent(msg)}
                       <div className={`flex items-center gap-1.5 mt-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <span className={`text-[9px] ${isMe ? 'text-white/70' : 'opacity-40'} font-medium`}>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        {isMe && (
-                          <span className={`text-[10px] font-bold ${msg.isRead ? 'text-white' : 'text-white/40'}`}>
-                            {msg.isRead ? 'Read' : '✓'}
-                          </span>
-                        )}
+                        {isMe && <span className={`text-[10px] font-bold ${msg.isRead ? 'text-white' : 'text-white/40'}`}>{msg.isRead ? 'Read' : '✓'}</span>}
                       </div>
                     </div>
                     
@@ -351,11 +348,12 @@ const ChatArea = ({ activeChatId, onBack }) => {
                     )}
                   </div>
 
-                  <div className={`flex items-center gap-1 bg-[var(--pane-bg)]/90 backdrop-blur-md p-1 rounded-full border border-[var(--pane-border)] shadow-xl opacity-0 group-hover/bubble:opacity-100 transition-opacity duration-200 z-30 self-center mx-2`}>
-                    <button onClick={() => setReplyTo(msg)} className="p-1.5 hover:bg-sagar-blue/10 rounded-full text-sagar-blue transition-colors"><Reply size={14} /></button>
+                  {/* Action Menu (Visible on Hover OR Tap) */}
+                  <div className={`flex items-center gap-1 bg-[var(--pane-bg)]/90 backdrop-blur-md p-1 rounded-full border border-[var(--pane-border)] shadow-xl transition-all duration-200 z-30 self-center mx-2 ${isMenuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-90 md:group-hover/bubble:opacity-100 md:group-hover/bubble:scale-100 pointer-events-none group-hover/bubble:pointer-events-auto'}`}>
+                    <button onClick={() => { setReplyTo(msg); setActiveMenuId(null); }} className="p-1.5 hover:bg-sagar-blue/10 rounded-full text-sagar-blue transition-colors"><Reply size={14} /></button>
                     <div className="relative group/react">
-                      <button className="p-1.5 hover:bg-yellow-500/10 rounded-full text-yellow-500 transition-colors"><Smile size={14} /></button>
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--pane-bg)] border border-[var(--pane-border)] rounded-2xl p-2 shadow-2xl flex gap-2 hidden group-hover/react:flex animate-in zoom-in">
+                      <button onClick={(e) => { e.stopPropagation(); setReactionPickerFor(reactionPickerFor === msg._id ? null : msg._id); }} className="p-1.5 hover:bg-yellow-500/10 rounded-full text-yellow-500 transition-colors"><Smile size={14} /></button>
+                      <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--pane-bg)] border border-[var(--pane-border)] rounded-2xl p-2 shadow-2xl flex gap-2 animate-in zoom-in ${reactionPickerFor === msg._id ? 'flex' : 'hidden md:group-hover/react:flex'}`}>
                         {['❤️', '😂', '😮', '😢', '🔥', '👍'].map(emoji => (
                           <button key={emoji} onClick={() => handleReact(msg._id, emoji)} className="text-lg hover:scale-125 transition-transform">{emoji}</button>
                         ))}
